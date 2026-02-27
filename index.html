@@ -1,61 +1,602 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Sistema de Conferência</title>
-<style>
-body { font-family: Arial; text-align: center; margin-top: 40px; }
-input { padding: 10px; font-size: 18px; width: 300px; }
-button { padding: 10px; font-size: 16px; margin: 10px; }
-.ok { color: green; font-weight: bold; }
-.erro { color: red; font-weight: bold; }
-</style>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+  <style>
+    .camera-mobile{
+  position:relative;
+  width:100%;
+  height:70vh;
+  background:#000;
+  border-radius:22px;
+  overflow:hidden;
+  margin-top:14px;
+}
+
+.overlay-mobile{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  z-index:10;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  color:#fff;
+  text-align:center;
+}
+
+.spinner{
+  width:56px;
+  height:56px;
+  border:4px solid rgba(255,255,255,0.3);
+  border-top:4px solid #fff;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+
+.overlay-mobile .txt1{
+  margin-top:18px;
+  font-size:18px;
+  font-weight:600;
+}
+
+.overlay-mobile .txt2{
+  margin-top:6px;
+  font-size:14px;
+  opacity:.85;
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+    .loader{
+  width:46px;
+  height:46px;
+  border:4px solid #e5e7eb;
+  border-top:4px solid #2563eb;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+    body{
+      margin:0;
+      font-family:Inter,sans-serif;
+      background:
+        radial-gradient(circle at top left, #e0e7ff, transparent 40%),
+        radial-gradient(circle at bottom right, #d1fae5, transparent 40%),
+        linear-gradient(135deg, #f8fafc, #eef2ff);
+      min-height:100vh;
+    }
+    .app{display:flex;min-height:100vh}
+    .sidebar{
+      width:240px;
+      background:rgba(255,255,255,0.95);
+      border-right:1px solid #e5e7eb;
+      padding:24px 16px;
+      box-shadow:4px 0 20px rgba(0,0,0,.05);
+    }
+    .logo{font-size:20px;font-weight:700;margin-bottom:32px}
+    .logo span{color:#2563eb;font-weight:400}
+    .nav a{
+      display:block;
+      padding:12px;
+      border-radius:10px;
+      text-decoration:none;
+      color:#374151;
+      margin-bottom:8px;
+      font-weight:500;
+      cursor:pointer;
+      text-align:center;
+    }
+    .nav a.active{
+      background:#2563eb;
+      color:#fff;
+      box-shadow:0 6px 18px rgba(37,99,235,.35);
+    }
+    .content{flex:1;padding:32px}
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:16px;
+      margin-bottom:24px
+    }
+    .card{
+      background:#fff;
+      padding:20px;
+      border-radius:18px;
+      box-shadow:0 12px 30px rgba(0,0,0,.08);
+    }
+    .card .title{font-size:14px;color:#6b7280}
+    .card .number{font-size:32px;font-weight:700;margin-top:6px}
+    .scanner{
+      background:#fff;
+      padding:28px;
+      border-radius:22px;
+      box-shadow:0 20px 45px rgba(0,0,0,.12);
+      max-width:900px
+    }
+    .scanner input,
+    .scanner select,
+    .scanner button{
+      width:100%;
+      padding:14px;
+      margin-top:10px;
+      font-size:16px;
+      border-radius:12px;
+      border:1px solid #e5e7eb;
+    }
+    .scanner button{
+      background:#2563eb;
+      color:#fff;
+      font-weight:600;
+      border:none;
+      cursor:pointer;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:16px;
+      background:#fff;
+      border-radius:14px;
+      overflow:hidden;
+    }
+    th,td{
+      padding:12px;
+      border-bottom:1px solid #e5e7eb;
+      font-size:14px;
+    }
+    th{background:#f3f4f6}
+    .status-pendente{background:#fee2e2}
+    .status-pronto{background:#fee2e2}
+    .status-ok{background:#d1fae5}
+
+    @media (max-width:768px){
+      .app{flex-direction:column}
+      .sidebar{
+        width:100%;
+        border-right:none;
+        border-bottom:1px solid #e5e7eb
+      }
+      .nav{display:flex;gap:8px}
+      .nav a{flex:1}
+      .cards{grid-template-columns:1fr}
+      table{display:block;overflow-x:auto}
+    }
+    .camera-mobile video{
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transform:translate(-50%, -50%);
+}
+  </style>
 </head>
+
 <body>
 
-<h2>Conferência de Pacotes</h2>
+<audio id="somPronto" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+<audio id="somColetado" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+<audio id="somAlerta" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
-<input type="file" id="csvFile" accept=".csv">
-<br><br>
+<div class="app">
 
-<input type="text" id="barcode" placeholder="Bipe o código aqui" autofocus>
-<div id="resultado"></div>
+  <aside class="sidebar">
+    <div class="logo">Isamig <span>| Conferência</span></div>
+    <nav class="nav">
+      <a class="active" onclick="mostrarAba('scanner',this)">Scanner</a>
+      <a onclick="mostrarAba('relatorios',this)">Relatórios</a>
+      <a onclick="mostrarAba('devolucao',this)">Devolução Shopee</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+
+    <!-- Scanner -->
+    <div id="aba-scanner">
+      <div class="cards">
+        <div class="card"><div class="title">Jadlog</div><div class="number" id="transportadora">0</div></div>
+        <div class="card"><div class="title">Correios</div><div class="number" id="correios">0</div></div>
+        <div class="card"><div class="title">Coletados Hoje</div><div class="number" id="coletados">0</div></div>
+      </div>
+
+      <div class="scanner">
+        <h2>Scanner de Pacotes</h2>
+
+        <select id="tipoEnvio">
+          <option value="Transportadora">🚚 Jadlog</option>
+          <option value="Correios">📦 Correios</option>
+        </select>
+
+        <input id="codigo" placeholder="Bipe o código" autofocus onkeydown="if(event.key==='Enter'){processar()}">
+
+        <button onclick="processar()">PROCESSAR</button>
+        <button onclick="abrirCameraScanner()">📷 Ler pela câmera</button>
+
+        <div id="cameraBox" style="display:none;margin-top:16px">
+          <div id="reader"></div>
+          <button onclick="fecharCameraScanner()">Fechar câmera</button>
+        </div>
+
+        <div id="retorno" style="margin-top:10px;font-weight:600"></div>
+      </div>
+    </div>
+
+    <!-- Relatórios -->
+    <div id="aba-relatorios" style="display:none">
+  <div class="scanner">
+    <h2>Relatórios</h2>
+
+    <!-- TABELA -->
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Código</th>
+          <th>Tipo</th>
+          <th>Pronto</th>
+          <th>Coletado</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-relatorios"></tbody>
+    </table>
+
+    <!-- PAGINAÇÃO -->
+    <div id="paginacaoRelatorios" style="
+      margin-top:16px;
+      display:flex;
+      justify-content:center;
+      gap:12px;
+    ">
+      <button onclick="paginaAnterior()" class="btn-capturar">⬅Próximo</button>
+      <button onclick="proximaPagina()" class="btn-capturar"> Anterior➡ </button>
+    </div>
+
+  </div>
+</div>
+
+
+
+    <div id="aba-devolucao" style="display:none">
+  <div class="scanner">
+    <h2>Devolução Shopee</h2>
+
+    <!-- CÂMERA -->
+    <div id="cameraDevolucao" class="camera-mobile">
+
+      <!-- OVERLAY -->
+      <div id="overlayProcessando" class="overlay-mobile">
+        <div class="spinner"></div>
+        <div class="txt1">Processando imagem</div>
+        <div class="txt2">Aguarde alguns segundos</div>
+      </div>
+
+    </div>
+
+    <!-- BOTÃO -->
+    <button class="btn-capturar" onclick="capturarDevolucao()">
+      📸 Capturar Foto
+    </button>
+
+    <!-- CONTADOR -->
+    <div class="cards" style="margin-top:20px">
+      <div class="card">
+        <div class="title">COLETADOS HOJE:</div>
+        <div class="number" id="contadorDevolucao">0</div>
+      </div>
+    </div>
+
+    <!-- LISTA -->
+    <table>
+      <thead>
+        <tr>
+          <th>Arquivo</th>
+          <th>Data</th>
+          <th>Hora</th>
+          <th>Abrir</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaDevolucao"></tbody>
+    </table>
+
+  </div>
+</div>
+
+
+  </main>
+</div>
 
 <script>
-let codigos = [];
-let conferidos = [];
+  let paginaAtual = 1;
+const itensPorPagina = 15;
+  let processandoDevolucao = false;
+  let html5QrCode = null;
+  let scannerAtivo = false;
 
-document.getElementById('csvFile').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const linhas = event.target.result.split('\n');
-        codigos = linhas.map(l => l.trim());
-        alert("Planilha carregada com sucesso!");
-    };
-    reader.readAsText(file);
-});
+  let devolucaoStream = null;
+  let relatorios = [];
 
-document.getElementById('barcode').addEventListener('keypress', function(e) {
-    if (e.key === "Enter") {
-        let codigo = this.value.trim();
-        let resultado = document.getElementById("resultado");
+  function mostrarAba(a,e){
+    fecharCameraScanner();
+    document.getElementById("aba-scanner").style.display=a==="scanner"?"block":"none";
+    document.getElementById("aba-relatorios").style.display=a==="relatorios"?"block":"none";
+    document.getElementById("aba-devolucao").style.display=a==="devolucao"?"block":"none";
+    document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("active"));
+    e.classList.add("active");
 
-        if (codigos.includes(codigo)) {
-            if (!conferidos.includes(codigo)) {
-                conferidos.push(codigo);
-                resultado.innerHTML = "<p class='ok'>✔ Código Conferido!</p>";
-            } else {
-                resultado.innerHTML = "<p class='erro'>⚠ Já conferido!</p>";
-            }
-        } else {
-            resultado.innerHTML = "<p class='erro'>✖ Código NÃO encontrado!</p>";
-        }
+    if(a !== "scanner") fecharCameraScanner();
+   if(a === "devolucao"){
+  abrirCameraDevolucao();
+  carregarDevolucoes();
+}else{
+  const tb = document.getElementById("tabelaDevolucao");
+tb.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
 
-        this.value = "";
-    }
-});
+  fecharCameraDevolucao();
+}
+
+    if(a === "relatorios") carregarRelatorios();
+  }
+
+  // ================= SCANNER =================
+  function processar(valor){
+    const codigoInput=document.getElementById("codigo");
+    const c = valor || codigoInput.value.trim();
+    if(!c) return;
+
+    google.script.run.withSuccessHandler(r=>{
+      document.getElementById("retorno").innerText=r;
+      if(r.includes("📦")) somPronto.play();
+      else if(r.includes("✔")) somColetado.play();
+      else somAlerta.play();
+
+      codigoInput.value="";
+      codigoInput.focus();
+      atualizarContadores();
+    }).receberCodigo(c, document.getElementById("tipoEnvio").value);
+  }
+
+  function atualizarContadores(){
+    google.script.run.withSuccessHandler(d=>{
+      document.getElementById("transportadora").innerText=d.pronto.transportadora;
+      document.getElementById("correios").innerText=d.pronto.correios;
+      document.getElementById("coletados").innerText=d.coletadoHoje.transportadora+d.coletadoHoje.correios;
+    }).getContadoresGerais();
+  }
+
+  async function abrirCameraScanner(){
+    if(scannerAtivo) return;
+    document.getElementById("cameraBox").style.display="block";
+    html5QrCode = new Html5Qrcode("reader");
+    scannerAtivo=true;
+
+    await html5QrCode.start(
+      { facingMode:{ exact:"environment" } },
+      { fps:10, qrbox:250 },
+      msg=>{
+        processar(msg);
+        fecharCameraScanner();
+      }
+    );
+  }
+
+ async function fecharCameraScanner(){
+  if(!html5QrCode) return;
+
+  try{
+    await html5QrCode.stop();
+    await html5QrCode.clear();
+  }catch(e){}
+
+  html5QrCode = null;
+  scannerAtivo = false;
+
+  const box = document.getElementById("cameraBox");
+  if(box) box.style.display = "none";
+}
+
+
+  // ================= DEVOLUÇÃO =================
+ function abrirCameraDevolucao(){
+
+
+  const div = document.getElementById("cameraDevolucao");
+  div.style.display = "block";
+
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.playsInline = true;
+  video.muted = true;
+
+  div.insertBefore(video, div.firstChild);
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" },
+    audio: false
+  })
+  .then(stream => {
+    devolucaoStream = stream;
+    video.srcObject = stream;
+  })
+  .catch(() => {
+    alert("Não foi possível acessar a câmera traseira.");
+  });
+}
+
+
+
+  function capturarDevolucao(){
+  if(processandoDevolucao) return;
+
+  if(!devolucaoStream) return;
+
+  processandoDevolucao = true;
+
+  document.getElementById("overlayProcessando").style.display = "flex";
+
+  const video = document.querySelector("#cameraDevolucao video");
+  const canvas = document.createElement("canvas");
+
+canvas.width = video.videoWidth || 1280;
+canvas.height = video.videoHeight || 720;
+
+
+  canvas.getContext("2d").drawImage(video, 0, 0);
+
+  const dataUrl = canvas.toDataURL("image/png");
+
+  const now = new Date();
+  const nomeArquivo =
+    `devolucao_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_` +
+    `${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}.png`;
+
+  google.script.run
+    .withSuccessHandler(() => {
+
+  carregarDevolucoes();
+
+  // FECHA STREAM DA CÂMERA
+  if (devolucaoStream) {
+    devolucaoStream.getTracks().forEach(t => t.stop());
+    devolucaoStream = null;
+  }
+
+  // LIMPA O CONTAINER DA CÂMERA
+  const div = document.getElementById("cameraDevolucao");
+  div.innerHTML = `
+    <div id="overlayProcessando" class="overlay-mobile">
+      <div class="spinner"></div>
+      <div class="txt1">Processando imagem</div>
+      <div class="txt2">Aguarde alguns segundos</div>
+    </div>
+  `;
+
+  // REABRE A CÂMERA
+  setTimeout(() => {
+    abrirCameraDevolucao();
+  }, 300);
+
+  processandoDevolucao = false;
+  document.getElementById("overlayProcessando").style.display = "none";
+
+})
+
+
+    .withFailureHandler(() => {
+      alert("Erro ao salvar a imagem.");
+
+      processandoDevolucao = false;
+      document.getElementById("overlayProcessando").style.display = "none";
+    })
+    .salvarFoto(dataUrl, nomeArquivo);
+}
+
+
+  function carregarDevolucoes(){
+    google.script.run.withSuccessHandler(d=>{
+      document.getElementById("contadorDevolucao").innerText = d.contadorHoje;
+
+
+      const tb=document.getElementById("tabelaDevolucao");
+      tb.innerHTML="";
+
+      if(!d.fotos.length){
+        tb.innerHTML='<tr><td colspan="4">Nenhuma foto encontrada</td></tr>';
+        return;
+      }
+
+      d.fotos.forEach(f=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML = `
+  <td>${f.nome}</td>
+  <td>${f.data}</td>
+  <td>${f.hora}</td>
+  <td><a href="${f.url}" target="_blank">Abrir</a></td>
+`;
+
+        tb.appendChild(tr);
+      });
+    }).getFotosDevolucao();
+  }
+
+  function carregarRelatorios(){
+  google.script.run.withSuccessHandler(lista=>{
+    relatorios = lista || [];
+    paginaAtual = 1;
+    renderizarRelatorios();
+  }).getRelatorios();
+}
+
+
+  window.onload=()=>{
+    atualizarContadores();
+    document.getElementById("codigo").focus();
+  };
+  function fecharCameraDevolucao(){
+  if(devolucaoStream){
+    devolucaoStream.getTracks().forEach(t => t.stop());
+    devolucaoStream = null;
+  }
+
+  const div = document.getElementById("cameraDevolucao");
+  div.innerHTML = "";
+  div.style.display = "none";
+}
+function renderizarRelatorios(){
+  const tb = document.getElementById("tabela-relatorios");
+  tb.innerHTML = "";
+
+  if(!relatorios.length){
+    tb.innerHTML = '<tr><td colspan="5">Nenhum registro encontrado</td></tr>';
+    return;
+  }
+
+  const inicio = (paginaAtual - 1) * itensPorPagina;
+  const fim = inicio + itensPorPagina;
+  const pagina = relatorios.slice(inicio, fim);
+
+  pagina.forEach(l=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${l.icone || "⏳"}</td>
+      <td>${l.codigo || "-"}</td>
+      <td>${l.tipo || "-"}</td>
+      <td>${l.pronto || "-"}</td>
+      <td>${l.coletado || "-"}</td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+
+function proximaPagina(){
+  if(paginaAtual * itensPorPagina < relatorios.length){
+    paginaAtual++;
+    renderizarRelatorios();
+  }
+}
+
+function paginaAnterior(){
+  if(paginaAtual > 1){
+    paginaAtual--;
+    renderizarRelatorios();
+  }
+}
 </script>
+
+
+</div>
+
 
 </body>
 </html>
