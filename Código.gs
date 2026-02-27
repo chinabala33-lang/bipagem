@@ -141,3 +141,13 @@ function receberCodigo(codigo, tipo){
   return "✔ Código Conferido com sucesso";
 }
 }
+function getRelatorios(){
+  const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Pedidos");
+  const dados = aba.getRange("A2:C").getValues();
+
+  return dados.map(l => ({
+    codigo: l[0],
+    status: l[1],
+    horario: l[2]
+  }));
+}
