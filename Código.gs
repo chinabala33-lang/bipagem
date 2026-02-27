@@ -110,141 +110,34 @@ function getContadoresGerais() {
 }
 
 // ===============================
-// 3️⃣ API PROCESSAMENTO
+// 3️⃣ API PROCESSAMENTO (ATUALIZADO)
 // ===============================
-function receberCodigo(codigo, tipoEnvio) {
+function receberCodigo(codigo, tipo){
+
   if (!codigo) return "Código vazio";
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const produtos = ss.getSheetByName("Produtos");
-  const dados = produtos.getDataRange().getValues();
-  const agora = new Date();
+  const planilha = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = planilha.getSheetByName("Pedidos"); // Aba correta
+  const dados = aba.getRange("A2:A").getValues().flat(); // Coluna A (Códigos)
 
-  for (let i = 1; i < dados.length; i++) {
-    if (dados[i][0].toString().trim() === codigo) {
-      if (dados[i][2] === "Pronto") {
-        produtos.getRange(i + 1, 3).setValue("Coletado");
-        produtos.getRange(i + 1, 5).setValue(agora);
-        return "✔ Coletado";
-      }
-      return "⚠ Já coletado";
-    }
+  const linha = dados.indexOf(codigo);
+
+  if(linha === -1){
+    return "❌ Código não encontrado";
   }
 
-  produtos.appendRow([codigo, tipoEnvio, "Pronto", agora, ""]);
-  return "📦 Pronto para envio";
-}
+  const linhaReal = linha + 2; // Porque começa em A2
 
-// ===============================
-// 4️⃣ RELATORIOS
-// ===============================
-function getRelatorios() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const produtos = ss.getSheetByName("Produtos");
-  const dados = produtos.getDataRange().getValues();
-  const hoje = new Date();
-  let relatorios = [];
+  const status = aba.getRange(linhaReal, 2).getValue(); // Coluna B = Status
 
-  for (let i = 1; i < dados.length; i++) {
-    const dataPronto = dados[i][3];
-    const dataColetado = dados[i][4];
-
-    let status = dados[i][2];
-    let icone = "🟡";
-
-    if (status === "Pronto" && dataPronto instanceof Date) {
-      const diff = (hoje - dataPronto) / 86400000;
-      if (diff >= 1) {
-        status = "Pendente";
-        icone = "🔴";
-      }
-    }
-
-    if (dados[i][2] === "Coletado") icone = "🟢";
-
-    relatorios.push({
-      codigo: dados[i][0],
-      tipo: dados[i][1],
-      status,
-      icone,
-      pronto: dataPronto instanceof Date
-        ? Utilities.formatDate(dataPronto, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm")
-        : "",
-      coletado: dataColetado instanceof Date
-        ? Utilities.formatDate(dataColetado, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm")
-        : ""
-    });
+  if(status === "CONFERIDO"){
+    return "⚠ Já conferido";
   }
 
-  return relatorios.reverse();
+  // Marca como conferido
+  aba.getRange(linhaReal, 2).setValue("CONFERIDO"); // Coluna B
+  aba.getRange(linhaReal, 3).setValue(new Date());  // Coluna C = Data/Hora
+
+  return "✔ Código Conferido com sucesso";
 }
-
-// ===============================
-// 5️⃣ DEVOLUCAO SHOPEE - FOTOS
-// ===============================
-const PASTA_DEVOLUCAO = "1M0119JX-qJ7XpePfpLDYsqs_B50BAJXY";
-
-function salvarFoto(dataUrl, nomeArquivo) {
-  const pasta = DriveApp.getFolderById(PASTA_DEVOLUCAO);
-
-  const blob = Utilities.newBlob(
-    Utilities.base64Decode(dataUrl.split(",")[1]),
-    "image/png",
-    nomeArquivo
-  );
-
-  const arquivo = pasta.createFile(blob);
-
-  // mantém privado (uso interno)
-  return arquivo.getUrl();
-}
-
-function getFotosDevolucao() {
-  const pasta = DriveApp.getFolderById(PASTA_DEVOLUCAO);
-  const arquivos = pasta.getFiles();
-  const hoje = new Date();
-  const tz = Session.getScriptTimeZone();
-
-  hoje.setHours(0, 0, 0, 0);
-
-  let lista = [];
-  let contadorHoje = 0;
-
-  while (arquivos.hasNext()) {
-    const f = arquivos.next();
-    const data = f.getDateCreated();
-    const d = new Date(data);
-    d.setHours(0, 0, 0, 0);
-
-    // 🔹 SOMENTE HOJE
-    if (d.getTime() !== hoje.getTime()) continue;
-
-    contadorHoje++;
-
-    lista.push({
-      nome: f.getName(),
-      url: f.getUrl(),
-      data: Utilities.formatDate(data, tz, "dd/MM/yyyy"),
-      hora: Utilities.formatDate(data, tz, "HH:mm:ss")
-    });
-  }
-
-  // mais recentes primeiro
-  lista.sort((a, b) => b.hora.localeCompare(a.hora));
-
-  return {
-    contadorHoje: contadorHoje,
-    fotos: lista
-  };
-}
-
-
-// ===============================
-// 6️⃣ WEB APP
-// ===============================
-function doGet() {
-  return HtmlService
-    .createHtmlOutputFromFile("index")
-    .setTitle("Conferência de Pacotes")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
