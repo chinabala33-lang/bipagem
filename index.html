@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sistema de Conferência</title>
+<style>
+body { font-family: Arial; text-align: center; margin-top: 40px; }
+input { padding: 10px; font-size: 18px; width: 300px; }
+button { padding: 10px; font-size: 16px; margin: 10px; }
+.ok { color: green; font-weight: bold; }
+.erro { color: red; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h2>Conferência de Pacotes</h2>
+
+<input type="file" id="csvFile" accept=".csv">
+<br><br>
+
+<input type="text" id="barcode" placeholder="Bipe o código aqui" autofocus>
+<div id="resultado"></div>
+
+<script>
+let codigos = [];
+let conferidos = [];
+
+document.getElementById('csvFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const linhas = event.target.result.split('\n');
+        codigos = linhas.map(l => l.trim());
+        alert("Planilha carregada com sucesso!");
+    };
+    reader.readAsText(file);
+});
+
+document.getElementById('barcode').addEventListener('keypress', function(e) {
+    if (e.key === "Enter") {
+        let codigo = this.value.trim();
+        let resultado = document.getElementById("resultado");
+
+        if (codigos.includes(codigo)) {
+            if (!conferidos.includes(codigo)) {
+                conferidos.push(codigo);
+                resultado.innerHTML = "<p class='ok'>✔ Código Conferido!</p>";
+            } else {
+                resultado.innerHTML = "<p class='erro'>⚠ Já conferido!</p>";
+            }
+        } else {
+            resultado.innerHTML = "<p class='erro'>✖ Código NÃO encontrado!</p>";
+        }
+
+        this.value = "";
+    }
+});
+</script>
+
+</body>
+</html>
